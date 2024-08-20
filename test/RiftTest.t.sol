@@ -8,22 +8,22 @@
 
 pragma solidity ^0.8.26;
 
-import "forge-std/Test.sol";
+import 'forge-std/Test.sol';
 
 import {ERC1155Receiver} from '@openzeppelin/token/ERC1155/utils/ERC1155Receiver.sol';
 
 import {Test20} from './mocks/Test20.sol';
-import {Test721} from "./mocks/Test721.sol";
-import {Test1155} from "./mocks/Test1155.sol";
+import {Test721} from './mocks/Test721.sol';
+import {Test1155} from './mocks/Test1155.sol';
 import {Test721NoRoyalty} from './mocks/Test721NoRoyalty.sol';
-import {MockPortalAndCrossDomainMessenger} from "./mocks/MockPortalAndCrossDomainMessenger.sol";
-import {MockRoyaltyRegistry} from "./mocks/MockRoyaltyRegistry.sol";
-import {ERC721Bridgable} from "../src/libs/ERC721Bridgable.sol";
-import {ERC1155Bridgable} from "../src/libs/ERC1155Bridgable.sol";
+import {MockPortalAndCrossDomainMessenger} from './mocks/MockPortalAndCrossDomainMessenger.sol';
+import {MockRoyaltyRegistry} from './mocks/MockRoyaltyRegistry.sol';
+import {ERC721Bridgable} from '../src/libs/ERC721Bridgable.sol';
+import {ERC1155Bridgable} from '../src/libs/ERC1155Bridgable.sol';
 
-import {InfernalRiftAbove} from "../src/InfernalRiftAbove.sol";
-import {InfernalRiftBelow} from "../src/InfernalRiftBelow.sol";
-import {IInfernalRiftAbove} from "../src/interfaces/IInfernalRiftAbove.sol";
+import {InfernalRiftAbove} from '../src/InfernalRiftAbove.sol';
+import {InfernalRiftBelow} from '../src/InfernalRiftBelow.sol';
+import {IInfernalRiftAbove} from '../src/interfaces/IInfernalRiftAbove.sol';
 
 
 contract RiftTest is ERC1155Receiver, Test {
@@ -66,7 +66,7 @@ contract RiftTest is ERC1155Receiver, Test {
             address(mockPortalAndMessenger),
             address(riftAbove)
         );
-        erc721Template = new ERC721Bridgable("Test", "T721", address(riftBelow));
+        erc721Template = new ERC721Bridgable('Test', 'T721', address(riftBelow));
         erc1155Template = new ERC1155Bridgable(address(riftBelow));
         riftBelow.initializeERC721Bridgable(address(erc721Template));
         riftBelow.initializeERC1155Bridgable(address(erc1155Template));
@@ -130,7 +130,7 @@ contract RiftTest is ERC1155Receiver, Test {
         // This logic is tested in `test_basicSendOneNFT`
         _bridgeNft(address(this), address(l1NFT), 0);
 
-        // Get our "L2" address
+        // Get our 'L2' address
         Test721 l2NFT = Test721(riftBelow.l2AddressForL1Collection(address(l1NFT), false));
 
         // Confirm our NFT holdings after the first transfer
@@ -214,7 +214,7 @@ contract RiftTest is ERC1155Receiver, Test {
             _buildCrossThreshold1155Params(collections, idList, amountList, address(this), 0)
         );
 
-        // Get our "L2" address
+        // Get our 'L2' address
         Test1155 l2NFT1155 = Test1155(riftBelow.l2AddressForL1Collection(address(l1NFT1155), true));
 
         // Confirm our NFT holdings after the first transfer
@@ -320,7 +320,7 @@ contract RiftTest is ERC1155Receiver, Test {
         // Create an ERC721 that implements ERC2981 for royalties
         _bridgeNft(address(this), address(l1NFT), 0);
 
-        // Get our "L2" address
+        // Get our 'L2' address
         Test721 l2NFT = Test721(riftBelow.l2AddressForL1Collection(address(l1NFT), false));
 
         // Add some royalties (10 ETH and 1000 USDC) onto the L2 contract

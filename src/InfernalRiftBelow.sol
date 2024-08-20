@@ -5,24 +5,24 @@ pragma solidity ^0.8.26;
 /* solhint-disable var-name-mixedcase */
 /* solhint-disable func-param-name-mixedcase */
 
-import {Clones} from "@openzeppelin/proxy/Clones.sol";
+import {Clones} from '@openzeppelin/proxy/Clones.sol';
 import {ERC1155Receiver} from '@openzeppelin/token/ERC1155/utils/ERC1155Receiver.sol';
-import {IERC721} from "@openzeppelin/token/ERC721/IERC721.sol";
-import {IERC1155} from "@openzeppelin/token/ERC1155/IERC1155.sol";
+import {IERC721} from '@openzeppelin/token/ERC721/IERC721.sol';
+import {IERC1155} from '@openzeppelin/token/ERC1155/IERC1155.sol';
 
-import {IInfernalPackage} from "./interfaces/IInfernalPackage.sol";
-import {IInfernalRiftAbove} from "./interfaces/IInfernalRiftAbove.sol";
-import {IInfernalRiftBelow} from "./interfaces/IInfernalRiftBelow.sol";
-import {ICrossDomainMessenger} from "./interfaces/ICrossDomainMessenger.sol";
+import {IInfernalPackage} from './interfaces/IInfernalPackage.sol';
+import {IInfernalRiftAbove} from './interfaces/IInfernalRiftAbove.sol';
+import {IInfernalRiftBelow} from './interfaces/IInfernalRiftBelow.sol';
+import {ICrossDomainMessenger} from './interfaces/ICrossDomainMessenger.sol';
 
-import {ERC721Bridgable} from "./libs/ERC721Bridgable.sol";
-import {ERC1155Bridgable} from "./libs/ERC1155Bridgable.sol";
+import {ERC721Bridgable} from './libs/ERC721Bridgable.sol';
+import {ERC1155Bridgable} from './libs/ERC1155Bridgable.sol';
 
 
 /**
  * @title InfernalRiftBelow
  * 
- * Handles the registration and transfer of ERC721 tokens from L2 -> L1.
+ * Handles the transfer of ERC721 and ERC1155 tokens from L2 -> L1.
  * 
  * @author Sudo-Owen (https://github.com/sudo-owen)
  * @author Twade (https://github.com/tomwade)

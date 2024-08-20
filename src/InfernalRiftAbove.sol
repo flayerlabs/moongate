@@ -6,25 +6,25 @@ pragma solidity ^0.8.26;
 /* solhint-disable func-param-name-mixedcase */
 
 import {ERC1155Receiver} from '@openzeppelin/token/ERC1155/utils/ERC1155Receiver.sol';
-import {IERC721Metadata} from "@openzeppelin/token/ERC721/extensions/IERC721Metadata.sol";
-import {IERC1155MetadataURI} from "@openzeppelin/token/ERC1155/extensions/IERC1155MetadataURI.sol";
-import {ERC2981} from "@openzeppelin/token/common/ERC2981.sol";
-import {IERC2981} from "@openzeppelin/interfaces/IERC2981.sol";
+import {IERC721Metadata} from '@openzeppelin/token/ERC721/extensions/IERC721Metadata.sol';
+import {IERC1155MetadataURI} from '@openzeppelin/token/ERC1155/extensions/IERC1155MetadataURI.sol';
+import {ERC2981} from '@openzeppelin/token/common/ERC2981.sol';
+import {IERC2981} from '@openzeppelin/interfaces/IERC2981.sol';
 
-import {IInfernalPackage} from "./interfaces/IInfernalPackage.sol";
-import {IRoyaltyRegistry} from "./interfaces/IRoyaltyRegistry.sol";
-import {IInfernalRiftAbove} from "./interfaces/IInfernalRiftAbove.sol";
-import {IInfernalRiftBelow} from "./interfaces/IInfernalRiftBelow.sol";
-import {ICrossDomainMessenger} from "./interfaces/ICrossDomainMessenger.sol";
-import {IOptimismPortal} from "./interfaces/IOptimismPortal.sol";
+import {IInfernalPackage} from './interfaces/IInfernalPackage.sol';
+import {IRoyaltyRegistry} from './interfaces/IRoyaltyRegistry.sol';
+import {IInfernalRiftAbove} from './interfaces/IInfernalRiftAbove.sol';
+import {IInfernalRiftBelow} from './interfaces/IInfernalRiftBelow.sol';
+import {ICrossDomainMessenger} from './interfaces/ICrossDomainMessenger.sol';
+import {IOptimismPortal} from './interfaces/IOptimismPortal.sol';
 
-import {InfernalRiftBelow} from "./InfernalRiftBelow.sol";
+import {InfernalRiftBelow} from './InfernalRiftBelow.sol';
 
 
 /**
  * @title InfernalRiftAbove
  * 
- * Handles the registration and transfer of ERC721 tokens from L1 -> L2.
+ * Handles the registration and transfer of ERC721 and ERC1155 tokens from L1 -> L2.
  * 
  * @author Sudo-Owen (https://github.com/sudo-owen)
  * @author Twade (https://github.com/tomwade)
@@ -192,6 +192,7 @@ contract InfernalRiftAbove is ERC1155Receiver, IInfernalPackage, IInfernalRiftAb
      * 
      * @param collectionAddresses Addresses of collections returning from L2
      * @param idsToCross Array of tokenIds, with the first iterator referring to collectionAddress
+     * @param amountsToCross Array of token amounts to transfer
      * @param recipient The recipient of the tokens
      */
     function returnFromTheThreshold(
@@ -261,7 +262,12 @@ contract InfernalRiftAbove is ERC1155Receiver, IInfernalPackage, IInfernalRiftAb
     }
 
     /**
-     * ..
+     * Get the royalty amount assigned to a collection based on an individual token ID.
+     * 
+     * @param _collection The L1 collection address
+     * @param _tokenId The tokenId to check
+     * 
+     * @return royaltyBps_ The percentage that should be allocated as royalty from a sale
      */
     function _getCollectionRoyalty(address _collection, uint _tokenId) internal view returns (uint96 royaltyBps_) {
         try ERC2981(
