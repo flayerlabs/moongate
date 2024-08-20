@@ -12,7 +12,19 @@ import {ERC721} from '@solmate/tokens/ERC721.sol';
 import {SafeTransferLib} from '@solmate/utils/SafeTransferLib.sol';
 
 
+/**
+ * @title ERC721Bridgable
+ * 
+ * An extension of the ERC721 contract, used to create bridged assets on L2.
+ * 
+ * @author Sudo-Owen (https://github.com/sudo-owen)
+ * @author Twade (https://github.com/tomwade)
+ */
 contract ERC721Bridgable is ERC721, ERC2981 {
+
+    error NotRiftBelow();
+    error AlreadyInitialized();
+
     /// The {InfernalRiftBelow} contract address that can make protected calls
     address immutable public INFERNAL_RIFT_BELOW;
 
@@ -22,9 +34,13 @@ contract ERC721Bridgable is ERC721, ERC2981 {
     /// Stores if the contract has been initialized
     bool public initialized;
 
-    error NotRiftBelow();
-    error AlreadyInitialized();
-
+    /**
+     * Registers our contract references.
+     * 
+     * @param _name Name of the ERC721
+     * @param _symbol Symbol for the ERC721
+     * @param _INFERNAL_RIFT_BELOW Address of the {InfernalRiftBelow} contract
+     */
     constructor(string memory _name, string memory _symbol, address _INFERNAL_RIFT_BELOW) ERC721(_name, _symbol) {
         INFERNAL_RIFT_BELOW = _INFERNAL_RIFT_BELOW;
     }

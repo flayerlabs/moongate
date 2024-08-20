@@ -16,16 +16,24 @@ import {ICrossDomainMessenger} from "./interfaces/ICrossDomainMessenger.sol";
 import {ERC721Bridgable} from "./libs/ERC721Bridgable.sol";
 
 
+/**
+ * @title InfernalRiftBelow
+ * 
+ * Handles the registration and transfer of ERC721 tokens from L2 -> L1.
+ * 
+ * @author Sudo-Owen (https://github.com/sudo-owen)
+ * @author Twade (https://github.com/tomwade)
+ */
 contract InfernalRiftBelow is IInfernalPackage, IInfernalRiftBelow {
-
-    address immutable public RELAYER_ADDRESS;
-    ICrossDomainMessenger immutable public L2_CROSS_DOMAIN_MESSENGER;
-    address immutable public INFERNAL_RIFT_ABOVE;
 
     error TemplateAlreadySet();
     error NotRelayerCaller();
     error CrossChainSenderIsNotRiftAbove();
     error L1CollectionDoesNotExist();
+
+    address immutable public RELAYER_ADDRESS;
+    ICrossDomainMessenger immutable public L2_CROSS_DOMAIN_MESSENGER;
+    address immutable public INFERNAL_RIFT_ABOVE;
 
     /// Stores mapping of L1 addresses for their corresponding L2 addresses
     mapping(address _l2TokenAddress => address _l1TokenAddress) public l1AddressForL2Collection;
@@ -33,6 +41,13 @@ contract InfernalRiftBelow is IInfernalPackage, IInfernalRiftBelow {
     /// The deployed contract address of the ERC721Bridgable used for implementations 
     address public ERC721_BRIDGABLE_IMPLEMENTATION;
 
+    /**
+     * Registers our contract references.
+     * 
+     * @param _RELAYER_ADDRESS The relayer contract address
+     * @param _L2_CROSS_DOMAIN_MESSENGER {ICrossDomainMessenger} contract address
+     * @param _INFERNAL_RIFT_ABOVE {InfernalRiftAbove} contract address
+     */
     constructor(
         address _RELAYER_ADDRESS,
         address _L2_CROSS_DOMAIN_MESSENGER,

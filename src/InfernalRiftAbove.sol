@@ -19,13 +19,15 @@ import {IOptimismPortal} from "./interfaces/IOptimismPortal.sol";
 import {InfernalRiftBelow} from "./InfernalRiftBelow.sol";
 
 
+/**
+ * @title InfernalRiftAbove
+ * 
+ * Handles the registration and transfer of ERC721 tokens from L1 -> L2.
+ * 
+ * @author Sudo-Owen (https://github.com/sudo-owen)
+ * @author Twade (https://github.com/tomwade)
+ */
 contract InfernalRiftAbove is IInfernalPackage, IInfernalRiftAbove {
-    uint constant internal BPS_MULTIPLIER = 10000;
-
-    IOptimismPortal immutable public PORTAL;
-    address immutable public L1_CROSS_DOMAIN_MESSENGER;
-    IRoyaltyRegistry immutable public ROYALTY_REGISTRY;
-    address public INFERNAL_RIFT_BELOW;
 
     error RiftBelowAlreadySet();
     error NotCrossDomainMessenger();
@@ -33,6 +35,22 @@ contract InfernalRiftAbove is IInfernalPackage, IInfernalRiftAbove {
     error CollectionNotERC2981Compliant();
     error CallerIsNotRoyaltiesReceiver(address _caller, address _receiver);
 
+    /// Used in royalty calculation for decimal accuracy
+    uint constant internal BPS_MULTIPLIER = 10000;
+
+    IOptimismPortal immutable public PORTAL;
+    address immutable public L1_CROSS_DOMAIN_MESSENGER;
+    IRoyaltyRegistry immutable public ROYALTY_REGISTRY;
+
+    address public INFERNAL_RIFT_BELOW;
+
+    /**
+     * Registers our contract references.
+     * 
+     * @param _PORTAL {IOptimismPortal} contract address
+     * @param _L1_CROSS_DOMAIN_MESSENGER {ICrossDomainMessenger} contract address
+     * @param _ROYALTY_REGISTRY {IRoyaltyRegistry} contract address
+     */
     constructor(address _PORTAL, address _L1_CROSS_DOMAIN_MESSENGER, address _ROYALTY_REGISTRY) {
         PORTAL = IOptimismPortal(_PORTAL);
         L1_CROSS_DOMAIN_MESSENGER = _L1_CROSS_DOMAIN_MESSENGER;
@@ -138,11 +156,12 @@ contract InfernalRiftAbove is IInfernalPackage, IInfernalRiftAbove {
         uint[][] calldata idsToCross,
         address recipient
     ) external {
-        // Validate caller is cross-chain and comes from rift below
+        // Validate caller is cross-chain
         if (msg.sender != L1_CROSS_DOMAIN_MESSENGER) {
             revert NotCrossDomainMessenger();
         }
 
+        // Validate caller comes from {InfernalRiftBelow}
         if (ICrossDomainMessenger(msg.sender).xDomainMessageSender() != INFERNAL_RIFT_BELOW) {
             revert CrossChainSenderIsNotRiftBelow();
         }
@@ -153,6 +172,7 @@ contract InfernalRiftAbove is IInfernalPackage, IInfernalRiftAbove {
         IERC721Metadata erc721;
         uint numIds;
 
+        // Iterate over our collections and tokens to transfer to this contract
         for (uint i; i < numCollections; ++i) {
             erc721 = IERC721Metadata(collectionAddresses[i]);
             numIds = idsToCross[i].length;
