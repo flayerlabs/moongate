@@ -6,7 +6,9 @@ pragma solidity ^0.8.26;
 /* solhint-disable func-param-name-mixedcase */
 
 import {Clones} from "@openzeppelin/proxy/Clones.sol";
+import {ERC1155Receiver} from '@openzeppelin/token/ERC1155/utils/ERC1155Receiver.sol';
 import {IERC721} from "@openzeppelin/token/ERC721/IERC721.sol";
+import {IERC1155} from "@openzeppelin/token/ERC1155/IERC1155.sol";
 
 import {IInfernalPackage} from "./interfaces/IInfernalPackage.sol";
 import {IInfernalRiftAbove} from "./interfaces/IInfernalRiftAbove.sol";
@@ -14,6 +16,7 @@ import {IInfernalRiftBelow} from "./interfaces/IInfernalRiftBelow.sol";
 import {ICrossDomainMessenger} from "./interfaces/ICrossDomainMessenger.sol";
 
 import {ERC721Bridgable} from "./libs/ERC721Bridgable.sol";
+import {ERC1155Bridgable} from "./libs/ERC1155Bridgable.sol";
 
 
 /**
@@ -24,7 +27,7 @@ import {ERC721Bridgable} from "./libs/ERC721Bridgable.sol";
  * @author Sudo-Owen (https://github.com/sudo-owen)
  * @author Twade (https://github.com/tomwade)
  */
-contract InfernalRiftBelow is IInfernalPackage, IInfernalRiftBelow {
+contract InfernalRiftBelow is ERC1155Receiver, IInfernalPackage, IInfernalRiftBelow {
 
     error TemplateAlreadySet();
     error NotRelayerCaller();
@@ -40,6 +43,9 @@ contract InfernalRiftBelow is IInfernalPackage, IInfernalRiftBelow {
 
     /// The deployed contract address of the ERC721Bridgable used for implementations 
     address public ERC721_BRIDGABLE_IMPLEMENTATION;
+
+    /// The deployed contract address of the ERC1155Bridgable used for implementations 
+    address public ERC1155_BRIDGABLE_IMPLEMENTATION;
 
     /**
      * Registers our contract references.
@@ -62,26 +68,28 @@ contract InfernalRiftBelow is IInfernalPackage, IInfernalRiftBelow {
      * Provides the L2 address for the L1 collection. This does not require that the collection
      * to actually be deployed, but only provides the address that it either does, or will, have.
      * 
-     * @param l1CollectionAddress The L1 collection address
+     * @param _l1CollectionAddress The L1 collection address
+     * @param _is1155 If the L1 collection is ERC1155
      * 
-     * @return l2CollectionAddress The corresponding L2 collection address
+     * @return l2CollectionAddress_ The corresponding L2 collection address
      */
-    function l2AddressForL1Collection(address l1CollectionAddress) public view returns (address l2CollectionAddress) {
-        l2CollectionAddress = Clones.predictDeterministicAddress(
-            ERC721_BRIDGABLE_IMPLEMENTATION,
-            bytes32(bytes20(l1CollectionAddress))
+    function l2AddressForL1Collection(address _l1CollectionAddress, bool _is1155) public view returns (address l2CollectionAddress_) {
+        l2CollectionAddress_ = Clones.predictDeterministicAddress(
+            _is1155 ? ERC1155_BRIDGABLE_IMPLEMENTATION : ERC721_BRIDGABLE_IMPLEMENTATION,
+            bytes32(bytes20(_l1CollectionAddress))
         );
     }
 
     /**
      * Checks if the specified L1 address has code deployed to it on the L2.
      * 
-     * @param l1CollectionAddress The L1 collection address
+     * @param _l1CollectionAddress The L1 collection address
+     * @param _is1155 If the L1 collection is ERC1155
      * 
-     * @return isDeployed If the determined L2 address has code deployed to it
+     * @return isDeployed_ If the determined L2 address has code deployed to it
      */
-    function isDeployedOnL2(address l1CollectionAddress) public view returns (bool isDeployed) {
-        isDeployed = l2AddressForL1Collection(l1CollectionAddress).code.length > 0;
+    function isDeployedOnL2(address _l1CollectionAddress, bool _is1155) public view returns (bool isDeployed_) {
+        isDeployed_ = l2AddressForL1Collection(_l1CollectionAddress, _is1155).code.length > 0;
     }
 
     /**
@@ -97,6 +105,21 @@ contract InfernalRiftBelow is IInfernalPackage, IInfernalRiftBelow {
         }
 
         ERC721_BRIDGABLE_IMPLEMENTATION = _erc721Bridgable;
+    }
+
+    /**
+     * Allows the {ERC1155Bridgable} implementation to be set.
+     * 
+     * @dev If this value has already been set, then it cannot be updated.
+     * 
+     * @param _erc1155Bridgable Address of the {ERC1155Bridgable} implementation
+     */
+    function initializeERC1155Bridgable(address _erc1155Bridgable) external {
+        if (ERC1155_BRIDGABLE_IMPLEMENTATION != address(0)) {
+            revert TemplateAlreadySet();
+        }
+
+        ERC1155_BRIDGABLE_IMPLEMENTATION = _erc1155Bridgable;
     }
 
     /**
@@ -122,78 +145,41 @@ contract InfernalRiftBelow is IInfernalPackage, IInfernalRiftBelow {
         for (uint i; i < numPackages; ++i) {
             Package memory package = packages[i];
 
-            address l1CollectionAddress = package.collectionAddress;
-            address l2CollectionAddress = l2AddressForL1Collection(l1CollectionAddress);
-
-            ERC721Bridgable l2Collection;
-
-            // If not yet deployed, deploy the L2 collection and set name/symbol/royalty
-            if (!isDeployedOnL2(l1CollectionAddress)) {
-                Clones.cloneDeterministic(ERC721_BRIDGABLE_IMPLEMENTATION, bytes32(bytes20(l1CollectionAddress)));
-
-                l2Collection = ERC721Bridgable(l2CollectionAddress);
-                l2Collection.initialize(package.name, package.symbol, package.royaltyBps);
-
-                // Set the reverse mapping
-                l1AddressForL2Collection[l2CollectionAddress] = l1CollectionAddress;
-            }
-            // Otherwise, our collection already exists and we can reference it directly
-            else {
-                l2Collection = ERC721Bridgable(l2CollectionAddress);
-            }
-
-            // Iterate over our tokenIds to transfer them to the recipient
-            uint numIds = package.ids.length;
-            uint id;
-
-            for (uint j; j < numIds; ++j) {
-                id = package.ids[j];
-
-                // If already escrowed in the bridge, then transfer to recipient
-                if (l2Collection.ownerOf(id) == address(this)) {
-                    l2Collection.transferFrom(address(this), recipient, id);
-                }
-                // Otherwise, set tokenURI and mint to recipient
-                else {
-                    l2Collection.setTokenURIAndMintFromRiftAbove(id, package.uris[j], recipient);
-                }
+            if (package.amounts[0] == 0) {
+                _thresholdCross721(package, recipient);
+            } else {
+                _thresholdCross1155(package, recipient);
             }
         }
     }
 
     /**
      * Handles the bridging of tokens from the L2 back to L1.
-     * 
-     * @param collectionAddresses The L2 collection addresses to bridge
-     * @param idsToCross The tokenIds for respective collections to bridge
-     * @param recipient The L1 recipient of the bridged tokens
-     * @param gasLimit The limit of gas to send
      */
-    function returnFromThreshold(
-        address[] calldata collectionAddresses,
-        uint[][] calldata idsToCross,
-        address recipient,
-        uint32 gasLimit
-    ) external {
-        uint numCollections = collectionAddresses.length;
+    function returnFromThreshold(IInfernalRiftAbove.ThresholdCrossParams memory params) external {
+        uint numCollections = params.collectionAddresses.length;
         address[] memory l1CollectionAddresses = new address[](numCollections);
         address l1CollectionAddress;
-        IERC721 l2Collection;
         uint numIds;
+        uint amountToCross;
 
         // Iterate over our collections
         for (uint i; i < numCollections; ++i) {
-            l2Collection = IERC721(collectionAddresses[i]);
-            numIds = idsToCross[i].length;
+            numIds = params.idsToCross[i].length;
 
             // Iterate over the specified NFTs to pull them from the user and store
             // within this contract for potential future bridging use.
             for (uint j; j < numIds; ++j) {
-                l2Collection.transferFrom(msg.sender, address(this), idsToCross[i][j]);
+                amountToCross = params.amountsToCross[i][j];
+                if (amountToCross == 0) {
+                    IERC721(params.collectionAddresses[i]).transferFrom(msg.sender, address(this), params.idsToCross[i][j]);
+                } else {
+                    IERC1155(params.collectionAddresses[i]).safeTransferFrom(msg.sender, address(this), params.idsToCross[i][j], amountToCross, '');
+                }
             }
 
             // Look up the L1 collection address
-            l1CollectionAddress = l1AddressForL2Collection[address(l2Collection)];
+            l1CollectionAddress = l1AddressForL2Collection[params.collectionAddresses[i]];
 
             // Revert if L1 collection does not exist
             if (l1CollectionAddress == address(0)) revert L1CollectionDoesNotExist();
@@ -205,9 +191,9 @@ contract InfernalRiftBelow is IInfernalPackage, IInfernalRiftBelow {
             INFERNAL_RIFT_ABOVE,
             abi.encodeCall(
                 IInfernalRiftAbove.returnFromTheThreshold,
-                (l1CollectionAddresses, idsToCross, recipient)
+                (l1CollectionAddresses, params.idsToCross, params.amountsToCross, params.recipient)
             ),
-            gasLimit
+            uint32(params.gasLimit)
         );
     }
 
@@ -229,10 +215,111 @@ contract InfernalRiftBelow is IInfernalPackage, IInfernalRiftBelow {
         }
 
         // Get our L2 address from the L1
-        if (!isDeployedOnL2(_collectionAddress)) revert L1CollectionDoesNotExist();
+        if (!isDeployedOnL2(_collectionAddress, false)) revert L1CollectionDoesNotExist();
 
         // Call our ERC721Bridgable contract as the owner to claim royalties to the recipient
-        ERC721Bridgable(l2AddressForL1Collection(_collectionAddress)).claimRoyalties(_recipient, _tokens);
+        ERC721Bridgable(l2AddressForL1Collection(_collectionAddress, false)).claimRoyalties(_recipient, _tokens);
+    }
+
+    function _thresholdCross721(Package memory package, address recipient) internal {
+        ERC721Bridgable l2Collection721;
+
+        address l1CollectionAddress = package.collectionAddress;
+        address l2CollectionAddress = l2AddressForL1Collection(l1CollectionAddress, false);
+
+        // If not yet deployed, deploy the L2 collection and set name/symbol/royalty
+        if (!isDeployedOnL2(l1CollectionAddress, false)) {
+            Clones.cloneDeterministic(ERC721_BRIDGABLE_IMPLEMENTATION, bytes32(bytes20(l1CollectionAddress)));
+
+            // Check if we have an ERC721 or an ERC1155
+            l2Collection721 = ERC721Bridgable(l2CollectionAddress);
+            l2Collection721.initialize(package.name, package.symbol, package.royaltyBps);
+
+            // Set the reverse mapping
+            l1AddressForL2Collection[l2CollectionAddress] = l1CollectionAddress;
+        }
+        // Otherwise, our collection already exists and we can reference it directly
+        else {
+            l2Collection721 = ERC721Bridgable(l2CollectionAddress);
+        }
+
+        // Iterate over our tokenIds to transfer them to the recipient
+        uint numIds = package.ids.length;
+        uint id;
+
+        for (uint j; j < numIds; ++j) {
+            id = package.ids[j];
+
+            // Transfer ERC721
+            if (l2Collection721.ownerOf(id) == address(this)) {
+                l2Collection721.transferFrom(address(this), recipient, id);
+            } else {
+                l2Collection721.setTokenURIAndMintFromRiftAbove(id, package.uris[j], recipient);
+            }
+        }
+    }
+
+    function _thresholdCross1155(Package memory package, address recipient) internal {
+        ERC1155Bridgable l2Collection1155;
+
+        address l1CollectionAddress = package.collectionAddress;
+        address l2CollectionAddress = l2AddressForL1Collection(l1CollectionAddress, true);
+
+        // If not yet deployed, deploy the L2 collection and set name/symbol/royalty
+        if (!isDeployedOnL2(l1CollectionAddress, true)) {
+            Clones.cloneDeterministic(ERC1155_BRIDGABLE_IMPLEMENTATION, bytes32(bytes20(l1CollectionAddress)));
+
+            // Check if we have an ERC721 or an ERC1155
+            l2Collection1155 = ERC1155Bridgable(l2CollectionAddress);
+            l2Collection1155.initialize(package.royaltyBps);
+
+            // Set the reverse mapping
+            l1AddressForL2Collection[l2CollectionAddress] = l1CollectionAddress;
+        }
+        // Otherwise, our collection already exists and we can reference it directly
+        else {
+            l2Collection1155 = ERC1155Bridgable(l2CollectionAddress);
+        }
+
+        // Iterate over our tokenIds to transfer them to the recipient
+        uint numIds = package.ids.length;
+
+        uint id;
+        uint amount;
+
+        for (uint j; j < numIds; ++j) {
+            id = package.ids[j];
+            amount = package.amounts[j];
+
+            // Get the balance of the token currently held by the bridge
+            uint held = l2Collection1155.balanceOf(address(this), id);
+
+            // Determine the amount of tokens to transfer and mint
+            uint transfer = held > amount ? amount : held;
+            uint mint = amount - transfer;
+
+            if (transfer != 0) {
+                l2Collection1155.safeTransferFrom(address(this), recipient, id, transfer, '');
+            }
+
+            if (mint != 0) {
+                l2Collection1155.setTokenURIAndMintFromRiftAbove(id, mint, package.uris[j], recipient);
+            }
+        }
+    }
+
+    /**
+     * @dev See {IERC1155Receiver-onERC1155Received}.
+     */
+    function onERC1155Received(address, address, uint, uint, bytes memory) public pure override returns (bytes4) {
+        return this.onERC1155Received.selector;
+    }
+
+    /**
+     * @dev See {IERC1155Receiver-onERC1155BatchReceived}.
+     */
+    function onERC1155BatchReceived(address, address, uint[] memory, uint[] memory, bytes memory) public pure override returns (bytes4) {
+        return this.onERC1155BatchReceived.selector;
     }
 
 }

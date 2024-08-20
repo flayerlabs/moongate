@@ -5,7 +5,8 @@ interface IInfernalPackage {
     struct Package {
         address collectionAddress;
         uint96 royaltyBps;
-        uint256[] ids;
+        uint[] ids;
+        uint[] amounts;
         string[] uris;
         string name;
         string symbol;

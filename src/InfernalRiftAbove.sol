@@ -5,7 +5,9 @@ pragma solidity ^0.8.26;
 /* solhint-disable var-name-mixedcase */
 /* solhint-disable func-param-name-mixedcase */
 
+import {ERC1155Receiver} from '@openzeppelin/token/ERC1155/utils/ERC1155Receiver.sol';
 import {IERC721Metadata} from "@openzeppelin/token/ERC721/extensions/IERC721Metadata.sol";
+import {IERC1155MetadataURI} from "@openzeppelin/token/ERC1155/extensions/IERC1155MetadataURI.sol";
 import {ERC2981} from "@openzeppelin/token/common/ERC2981.sol";
 import {IERC2981} from "@openzeppelin/interfaces/IERC2981.sol";
 
@@ -27,13 +29,14 @@ import {InfernalRiftBelow} from "./InfernalRiftBelow.sol";
  * @author Sudo-Owen (https://github.com/sudo-owen)
  * @author Twade (https://github.com/tomwade)
  */
-contract InfernalRiftAbove is IInfernalPackage, IInfernalRiftAbove {
+contract InfernalRiftAbove is ERC1155Receiver, IInfernalPackage, IInfernalRiftAbove {
 
     error RiftBelowAlreadySet();
     error NotCrossDomainMessenger();
     error CrossChainSenderIsNotRiftBelow();
     error CollectionNotERC2981Compliant();
     error CallerIsNotRoyaltiesReceiver(address _caller, address _receiver);
+    error InvalidERC1155Amount();
 
     /// Used in royalty calculation for decimal accuracy
     uint constant internal BPS_MULTIPLIER = 10000;
@@ -74,20 +77,10 @@ contract InfernalRiftAbove is IInfernalPackage, IInfernalRiftAbove {
 
     /**
      * Sends ERC721 tokens from the L1 chain to L2.
-     * 
-     * @param collectionAddresses Addresses of collections returning from L2
-     * @param idsToCross Array of tokenIds, with the first iterator referring to collectionAddress
-     * @param recipient The recipient of the tokens on L2
-     * @param gasLimit The maximum amount of gas to spend in transaction
      */
-    function crossTheThreshold(
-        address[] calldata collectionAddresses,
-        uint[][] calldata idsToCross,
-        address recipient,
-        uint64 gasLimit
-    ) external payable {
+    function crossTheThreshold(ThresholdCrossParams memory params) external payable {
         // Set up payload
-        uint numCollections = collectionAddresses.length;
+        uint numCollections = params.collectionAddresses.length;
         Package[] memory package = new Package[](numCollections);
 
         // Cache variables ahead of our loops
@@ -99,34 +92,25 @@ contract InfernalRiftAbove is IInfernalPackage, IInfernalRiftAbove {
         // Go through each collection, set values if needed
         for (uint i; i < numCollections; ++i) {
             // Cache values needed
-            numIds = idsToCross[i].length;
-            collectionAddress = collectionAddresses[i];
+            numIds = params.idsToCross[i].length;
+            collectionAddress = params.collectionAddresses[i];
 
             erc721 = IERC721Metadata(collectionAddress);
 
             // Go through each NFT, set its URI and escrow it
             uris = new string[](numIds);
             for (uint j; j < numIds; ++j) {
-                uris[j] = erc721.tokenURI(idsToCross[i][j]);
-                erc721.transferFrom(msg.sender, address(this), idsToCross[i][j]);
-            }
-
-            // Grab royalty value from first ID
-            uint96 royaltyBps;
-            try ERC2981(
-                ROYALTY_REGISTRY.getRoyaltyLookupAddress(collectionAddress)
-            ).royaltyInfo(idsToCross[i][0], BPS_MULTIPLIER) returns (address, uint _royaltyAmount) {
-                royaltyBps = uint96(_royaltyAmount);
-            } catch {
-                // It's okay if it reverts (:
+                uris[j] = erc721.tokenURI(params.idsToCross[i][j]);
+                erc721.transferFrom(msg.sender, address(this), params.idsToCross[i][j]);
             }
 
             // Set up payload
             package[i] = Package({
                 collectionAddress: collectionAddress,
-                ids: idsToCross[i],
+                ids: params.idsToCross[i],
+                amounts: new uint[](numIds),
                 uris: uris,
-                royaltyBps: royaltyBps,
+                royaltyBps: _getCollectionRoyalty(collectionAddress, params.idsToCross[i][0]),
                 name: erc721.name(),
                 symbol: erc721.symbol()
             });
@@ -136,9 +120,68 @@ contract InfernalRiftAbove is IInfernalPackage, IInfernalRiftAbove {
         PORTAL.depositTransaction{value: msg.value}(
             INFERNAL_RIFT_BELOW,
             0,
-            gasLimit,
+            params.gasLimit,
             false,
-            abi.encodeCall(InfernalRiftBelow.thresholdCross, (package, recipient))
+            abi.encodeCall(InfernalRiftBelow.thresholdCross, (package, params.recipient))
+        );
+    }
+
+    /**
+     * Sends ERC1155 tokens from the L1 chain to L2.
+     */
+    function crossTheThreshold1155(ThresholdCrossParams memory params) external payable {
+        // Set up payload
+        uint numCollections = params.collectionAddresses.length;
+        Package[] memory package = new Package[](numCollections);
+
+        // Cache variables ahead of our loops
+        uint numIds;
+        address collectionAddress;
+        string[] memory uris;
+        uint tokenAmount;
+
+        IERC1155MetadataURI erc1155;
+
+        // Go through each collection, set values if needed
+        for (uint i; i < numCollections; ++i) {
+            // Cache values needed
+            numIds = params.idsToCross[i].length;
+            collectionAddress = params.collectionAddresses[i];
+
+            erc1155 = IERC1155MetadataURI(collectionAddress);
+
+            // Go through each NFT, set its URI and escrow it
+            uris = new string[](numIds);
+            for (uint j; j < numIds; ++j) {
+                // Ensure we have a valid amount passed (TODO: Is this needed?)
+                tokenAmount = params.amountsToCross[i][j];
+                if (tokenAmount == 0) {
+                    revert InvalidERC1155Amount();
+                }
+
+                uris[j] = erc1155.uri(params.idsToCross[i][j]);
+                erc1155.safeTransferFrom(msg.sender, address(this), params.idsToCross[i][j], params.amountsToCross[i][j], '');
+            }
+
+            // Set up payload
+            package[i] = Package({
+                collectionAddress: collectionAddress,
+                ids: params.idsToCross[i],
+                amounts: params.amountsToCross[i],
+                uris: uris,
+                royaltyBps: _getCollectionRoyalty(collectionAddress, params.idsToCross[i][0]),
+                name: '',
+                symbol: ''
+            });
+        }
+
+        // Send package off to the portal
+        PORTAL.depositTransaction{value: msg.value}(
+            INFERNAL_RIFT_BELOW,
+            0,
+            params.gasLimit,
+            false,
+            abi.encodeCall(InfernalRiftBelow.thresholdCross, (package, params.recipient))
         );
     }
 
@@ -154,6 +197,7 @@ contract InfernalRiftAbove is IInfernalPackage, IInfernalRiftAbove {
     function returnFromTheThreshold(
         address[] calldata collectionAddresses,
         uint[][] calldata idsToCross,
+        uint[][] calldata amountsToCross,
         address recipient
     ) external {
         // Validate caller is cross-chain
@@ -168,17 +212,18 @@ contract InfernalRiftAbove is IInfernalPackage, IInfernalRiftAbove {
 
         // Unlock NFTs to caller
         uint numCollections = collectionAddresses.length;
-
-        IERC721Metadata erc721;
         uint numIds;
 
         // Iterate over our collections and tokens to transfer to this contract
         for (uint i; i < numCollections; ++i) {
-            erc721 = IERC721Metadata(collectionAddresses[i]);
             numIds = idsToCross[i].length;
 
             for (uint j; j < numIds; ++j) {
-                erc721.transferFrom(address(this), recipient, idsToCross[i][j]);
+                if (amountsToCross[i][j] == 0) {
+                    IERC721Metadata(collectionAddresses[i]).transferFrom(address(this), recipient, idsToCross[i][j]);
+                } else {
+                    IERC1155MetadataURI(collectionAddresses[i]).safeTransferFrom(address(this), recipient, idsToCross[i][j], amountsToCross[i][j], '');
+                }
             }
         }
     }
@@ -213,6 +258,33 @@ contract InfernalRiftAbove is IInfernalPackage, IInfernalRiftAbove {
             ),
             _gasLimit
         );
+    }
+
+    /**
+     * ..
+     */
+    function _getCollectionRoyalty(address _collection, uint _tokenId) internal view returns (uint96 royaltyBps_) {
+        try ERC2981(
+            ROYALTY_REGISTRY.getRoyaltyLookupAddress(_collection)
+        ).royaltyInfo(_tokenId, BPS_MULTIPLIER) returns (address, uint _royaltyAmount) {
+            royaltyBps_ = uint96(_royaltyAmount);
+        } catch {
+            // It's okay if it reverts (:
+        }
+    }
+
+    /**
+     * @dev See {IERC1155Receiver-onERC1155Received}.
+     */
+    function onERC1155Received(address, address, uint, uint, bytes memory) public pure override returns (bytes4) {
+        return this.onERC1155Received.selector;
+    }
+
+    /**
+     * @dev See {IERC1155Receiver-onERC1155BatchReceived}.
+     */
+    function onERC1155BatchReceived(address, address, uint[] memory, uint[] memory, bytes memory) public pure override returns (bytes4) {
+        return this.onERC1155BatchReceived.selector;
     }
 
 }
