@@ -30,6 +30,12 @@ contract InfernalRiftBelow is ERC1155Receiver, IInfernalPackage, IInfernalRiftBe
     error CrossChainSenderIsNotRiftAbove();
     error L1CollectionDoesNotExist();
 
+    event BridgeFinalized(address _source, address _l2CollectionAddress, Package _package, address _recipient);
+    event BridgeStarted(address _destination, address[] _l2CollectionAddresses, address[] _l1CollectionAddresses, uint[][] _idsToCross, uint[][] _amountsToCross, address _recipient);
+    event ERC721BridgableImplementationUpdated(address _erc721Bridgable);
+    event ERC1155BridgableImplementationUpdated(address _erc1155Bridgable);
+    event RoyaltyClaimFinalized(address _collectionAddress, address _recipient, address[] _tokens);
+
     address immutable public RELAYER_ADDRESS;
     ICrossDomainMessenger immutable public L2_CROSS_DOMAIN_MESSENGER;
     address immutable public INFERNAL_RIFT_ABOVE;
@@ -101,6 +107,7 @@ contract InfernalRiftBelow is ERC1155Receiver, IInfernalPackage, IInfernalRiftBe
         }
 
         ERC721_BRIDGABLE_IMPLEMENTATION = _erc721Bridgable;
+        emit ERC721BridgableImplementationUpdated(_erc721Bridgable);
     }
 
     /**
@@ -116,6 +123,7 @@ contract InfernalRiftBelow is ERC1155Receiver, IInfernalPackage, IInfernalRiftBe
         }
 
         ERC1155_BRIDGABLE_IMPLEMENTATION = _erc1155Bridgable;
+        emit ERC1155BridgableImplementationUpdated(_erc1155Bridgable);
     }
 
     /**
@@ -141,11 +149,14 @@ contract InfernalRiftBelow is ERC1155Receiver, IInfernalPackage, IInfernalRiftBe
         for (uint i; i < numPackages; ++i) {
             Package memory package = packages[i];
 
+            address l2CollectionAddress;
             if (package.amounts[0] == 0) {
-                _thresholdCross721(package, recipient);
+                l2CollectionAddress = _thresholdCross721(package, recipient);
             } else {
-                _thresholdCross1155(package, recipient);
+                l2CollectionAddress = _thresholdCross1155(package, recipient);
             }
+
+            emit BridgeFinalized(address(INFERNAL_RIFT_ABOVE), l2CollectionAddress, package, recipient);
         }
     }
 
@@ -191,6 +202,8 @@ contract InfernalRiftBelow is ERC1155Receiver, IInfernalPackage, IInfernalRiftBe
             ),
             uint32(params.gasLimit)
         );
+
+        emit BridgeStarted(address(INFERNAL_RIFT_ABOVE), params.collectionAddresses, l1CollectionAddresses, params.idsToCross, params.amountsToCross, params.recipient);
     }
 
     /**
@@ -215,13 +228,14 @@ contract InfernalRiftBelow is ERC1155Receiver, IInfernalPackage, IInfernalRiftBe
 
         // Call our ERC721Bridgable contract as the owner to claim royalties to the recipient
         ERC721Bridgable(l2AddressForL1Collection(_collectionAddress, false)).claimRoyalties(_recipient, _tokens);
+        emit RoyaltyClaimFinalized(_collectionAddress, _recipient, _tokens);
     }
 
-    function _thresholdCross721(Package memory package, address recipient) internal {
+    function _thresholdCross721(Package memory package, address recipient) internal returns (address l2CollectionAddress) {
         ERC721Bridgable l2Collection721;
 
         address l1CollectionAddress = package.collectionAddress;
-        address l2CollectionAddress = l2AddressForL1Collection(l1CollectionAddress, false);
+        l2CollectionAddress = l2AddressForL1Collection(l1CollectionAddress, false);
 
         // If not yet deployed, deploy the L2 collection and set name/symbol/royalty
         if (!isDeployedOnL2(l1CollectionAddress, false)) {
@@ -255,11 +269,11 @@ contract InfernalRiftBelow is ERC1155Receiver, IInfernalPackage, IInfernalRiftBe
         }
     }
 
-    function _thresholdCross1155(Package memory package, address recipient) internal {
+    function _thresholdCross1155(Package memory package, address recipient) internal returns (address l2CollectionAddress) {
         ERC1155Bridgable l2Collection1155;
 
         address l1CollectionAddress = package.collectionAddress;
-        address l2CollectionAddress = l2AddressForL1Collection(l1CollectionAddress, true);
+        l2CollectionAddress = l2AddressForL1Collection(l1CollectionAddress, true);
 
         // If not yet deployed, deploy the L2 collection and set name/symbol/royalty
         if (!isDeployedOnL2(l1CollectionAddress, true)) {

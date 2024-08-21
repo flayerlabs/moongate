@@ -34,6 +34,11 @@ contract InfernalRiftAbove is ERC1155Receiver, IInfernalPackage, IInfernalRiftAb
     error CallerIsNotRoyaltiesReceiver(address _caller, address _receiver);
     error InvalidERC1155Amount();
 
+    event BridgeFinalized(address _source, address[] collectionAddresses, uint[][] idsToCross, uint[][] amountsToCross, address _recipient);
+    event BridgeStarted(address _destination, Package[] package, address _recipient);
+    event InfernalRiftBelowUpdated(address _infernalRiftBelow);
+    event RoyaltyClaimStarted(address _destination, address _collectionAddress, address _recipient, address[] _tokens);
+
     /// Used in royalty calculation for decimal accuracy
     uint constant internal BPS_MULTIPLIER = 10000;
 
@@ -69,6 +74,7 @@ contract InfernalRiftAbove is ERC1155Receiver, IInfernalPackage, IInfernalRiftAb
         }
 
         INFERNAL_RIFT_BELOW = _infernalRiftBelow;
+        emit InfernalRiftBelowUpdated(_infernalRiftBelow);
     }
 
     /**
@@ -120,6 +126,8 @@ contract InfernalRiftAbove is ERC1155Receiver, IInfernalPackage, IInfernalRiftAb
             false,
             abi.encodeCall(InfernalRiftBelow.thresholdCross, (package, params.recipient))
         );
+
+        emit BridgeStarted(address(INFERNAL_RIFT_BELOW), package, params.recipient);
     }
 
     /**
@@ -179,6 +187,8 @@ contract InfernalRiftAbove is ERC1155Receiver, IInfernalPackage, IInfernalRiftAb
             false,
             abi.encodeCall(InfernalRiftBelow.thresholdCross, (package, params.recipient))
         );
+
+        emit BridgeStarted(address(INFERNAL_RIFT_BELOW), package, params.recipient);
     }
 
     /**
@@ -223,6 +233,8 @@ contract InfernalRiftAbove is ERC1155Receiver, IInfernalPackage, IInfernalRiftAb
                 }
             }
         }
+
+        emit BridgeFinalized(address(INFERNAL_RIFT_BELOW), collectionAddresses, idsToCross, amountsToCross, recipient);
     }
 
     /**
@@ -255,6 +267,8 @@ contract InfernalRiftAbove is ERC1155Receiver, IInfernalPackage, IInfernalRiftAb
             ),
             _gasLimit
         );
+
+        emit RoyaltyClaimStarted(address(INFERNAL_RIFT_BELOW), _collectionAddress, _recipient, _tokens);
     }
 
     /**
