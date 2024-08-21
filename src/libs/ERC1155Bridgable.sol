@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity >=0.8.0;
-
-/* solhint-disable private-vars-leading-underscore */
-/* solhint-disable var-name-mixedcase */
-/* solhint-disable func-param-name-mixedcase */
+// SPDX-License-Identifier: AGPL-3.0
+pragma solidity ^0.8.26;
 
 import {ERC2981, IERC2981} from "@openzeppelin/token/common/ERC2981.sol";
 

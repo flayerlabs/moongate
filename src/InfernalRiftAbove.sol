@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.26;
 
-/* solhint-disable private-vars-leading-underscore */
-/* solhint-disable var-name-mixedcase */
-/* solhint-disable func-param-name-mixedcase */
-
 import {ERC1155Receiver} from '@openzeppelin/token/ERC1155/utils/ERC1155Receiver.sol';
 import {IERC721Metadata} from '@openzeppelin/token/ERC721/extensions/IERC721Metadata.sol';
 import {IERC1155MetadataURI} from '@openzeppelin/token/ERC1155/extensions/IERC1155MetadataURI.sol';
