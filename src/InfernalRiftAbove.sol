@@ -108,6 +108,7 @@ contract InfernalRiftAbove is ERC1155Receiver, IInfernalPackage, IInfernalRiftAb
 
             // Set up payload
             package[i] = Package({
+                chainId: block.chainid,
                 collectionAddress: collectionAddress,
                 ids: params.idsToCross[i],
                 amounts: new uint[](numIds),
@@ -169,6 +170,7 @@ contract InfernalRiftAbove is ERC1155Receiver, IInfernalPackage, IInfernalRiftAb
 
             // Set up payload
             package[i] = Package({
+                chainId: block.chainid,
                 collectionAddress: collectionAddress,
                 ids: params.idsToCross[i],
                 amounts: params.amountsToCross[i],

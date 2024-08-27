@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 interface IInfernalPackage {
     struct Package {
+        uint256 chainId;
         address collectionAddress;
         uint96 royaltyBps;
         uint[] ids;

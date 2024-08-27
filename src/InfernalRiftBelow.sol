@@ -243,7 +243,7 @@ contract InfernalRiftBelow is ERC1155Receiver, IInfernalPackage, IInfernalRiftBe
 
             // Check if we have an ERC721 or an ERC1155
             l2Collection721 = ERC721Bridgable(l2CollectionAddress);
-            l2Collection721.initialize(package.name, package.symbol, package.royaltyBps);
+            l2Collection721.initialize(package.name, package.symbol, package.royaltyBps, package.chainId, l1CollectionAddress);
 
             // Set the reverse mapping
             l1AddressForL2Collection[l2CollectionAddress] = l1CollectionAddress;
@@ -281,7 +281,7 @@ contract InfernalRiftBelow is ERC1155Receiver, IInfernalPackage, IInfernalRiftBe
 
             // Check if we have an ERC721 or an ERC1155
             l2Collection1155 = ERC1155Bridgable(l2CollectionAddress);
-            l2Collection1155.initialize(package.royaltyBps);
+            l2Collection1155.initialize(package.royaltyBps, package.chainId, l1CollectionAddress);
 
             // Set the reverse mapping
             l1AddressForL2Collection[l2CollectionAddress] = l1CollectionAddress;
