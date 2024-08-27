@@ -37,13 +37,13 @@ contract Bridge721 is Script {
 
         IERC721(collectionAddresses[0]).setApprovalForAll(_INFERNAL_RIFT_ABOVE, true);
 
-        InfernalRiftAbove(_INFERNAL_RIFT_ABOVE).crossTheThreshold{value: 0.1 ether}(
+        InfernalRiftAbove(_INFERNAL_RIFT_ABOVE).crossTheThreshold{value: 0.01 ether}(
         	IInfernalRiftAbove.ThresholdCrossParams({
         		collectionAddresses: collectionAddresses,
         		idsToCross: idsToCross,
         		amountsToCross: amountsToCross,
         		recipient: _RECIPIENT,
-        		gasLimit: 0.1 ether
+        		gasLimit: 45_000 wei
         	})
         );
 
