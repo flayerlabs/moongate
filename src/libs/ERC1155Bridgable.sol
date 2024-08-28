@@ -24,6 +24,12 @@ contract ERC1155Bridgable is ERC1155, ERC2981 {
     /// The {InfernalRiftBelow} contract address that can make protected calls
     address immutable public INFERNAL_RIFT_BELOW;
 
+    /// The chain ID where the original ERC1155 exists
+    uint256 public REMOTE_CHAIN_ID;
+
+    /// The token address of the original ERC1155
+    address public REMOTE_TOKEN;
+
     /// Maps tokenIds to their token URI
     mapping(uint _tokenId => string _tokenUri) public uriForToken;
 
@@ -44,7 +50,7 @@ contract ERC1155Bridgable is ERC1155, ERC2981 {
      *
      * @param _royaltyBps The denominated royalty amount
      */
-    function initialize(uint96 _royaltyBps) external {
+    function initialize(uint96 _royaltyBps, uint256 _REMOTE_CHAIN_ID, address _REMOTE_TOKEN) external {
         if (msg.sender != INFERNAL_RIFT_BELOW) {
             revert NotRiftBelow();
         }
@@ -56,6 +62,10 @@ contract ERC1155Bridgable is ERC1155, ERC2981 {
 
         // Set this contract to receive marketplace royalty
         _setDefaultRoyalty(address(this), _royaltyBps);
+
+        // Set our remote chain info
+        REMOTE_CHAIN_ID = _REMOTE_CHAIN_ID;
+        REMOTE_TOKEN = _REMOTE_TOKEN;
 
         // Prevent this function from being called again
         initialized = true;

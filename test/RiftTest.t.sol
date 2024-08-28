@@ -24,6 +24,7 @@ import {ERC1155Bridgable} from '../src/libs/ERC1155Bridgable.sol';
 import {InfernalRiftAbove} from '../src/InfernalRiftAbove.sol';
 import {InfernalRiftBelow} from '../src/InfernalRiftBelow.sol';
 import {IInfernalRiftAbove} from '../src/interfaces/IInfernalRiftAbove.sol';
+import {IInfernalPackage} from '../src/interfaces/IInfernalPackage.sol';
 
 
 contract RiftTest is ERC1155Receiver, Test {
@@ -40,13 +41,15 @@ contract RiftTest is ERC1155Receiver, Test {
     InfernalRiftBelow riftBelow;
     Test20 USDC;
 
+    event BridgeStarted(address _destination, IInfernalPackage.Package[] package, address _recipient);
+
     function setUp() public {
 
         /**
           - Deploy rift above
           - Deploy rift below
           - Deploy ERC721Brigable template and set with rift below
-          - Set rift below to use ERC721Brigable
+          - Set rift below to use ERC721Bridgable
           - Set rift above to use rift below
           - Everything now immutable
          */
@@ -86,6 +89,8 @@ contract RiftTest is ERC1155Receiver, Test {
         riftAbove.crossTheThreshold(
             _buildCrossThresholdParams(collection, idList, ALICE, 0)
         );
+
+        _verifyRemoteInfo(collection);
     }
 
     function test_basicSendMultipleNfts() public {
@@ -124,6 +129,8 @@ contract RiftTest is ERC1155Receiver, Test {
         riftAbove.crossTheThreshold(
             _buildCrossThresholdParams(collections, ids, ALICE, 0)
         );
+
+        _verifyRemoteInfo(collections);
     }
 
     function test_CanBridgeNftBackAndForth() public {
@@ -463,6 +470,16 @@ contract RiftTest is ERC1155Receiver, Test {
         params_ = IInfernalRiftAbove.ThresholdCrossParams(
             collectionAddresses, idsToCross, amountsToCross, recipient, gasLimit
         );
+    }
+
+    function _verifyRemoteInfo(address[] memory collections) internal view {
+        for (uint256 i; i < collections.length; ++i) {
+            // Get our 'L2' address
+            ERC721Bridgable l2NFT = ERC721Bridgable(riftBelow.l2AddressForL1Collection(collections[i], false));
+            // verify remote info
+            assertEq(l2NFT.REMOTE_CHAIN_ID(), block.chainid);
+            assertEq(l2NFT.REMOTE_TOKEN(), collections[i]);
+        }
     }
 
     /**
