@@ -11,7 +11,7 @@ import {InfernalRiftBelow} from '../src/InfernalRiftAbove.sol';
 /**
  * Configures Above with information about Below.
  *
- * Sepolia: `forge script script/DeployBelow.s.sol:DeployBelow --rpc-url "https://eth-sepolia.g.alchemy.com/v2/_RDgKRq2wGVTLXJ98vHHDfjr_dfQzTkS" --broadcast -vvvv --optimize --optimizer-runs 10000 --legacy`
+ * Sepolia: `forge script script/DeployBelow.s.sol:DeployBelow --rpc-url "https://sepolia.base.org" --broadcast -vvvv --optimize --optimizer-runs 10000 --legacy`
  */
 contract DeployBelow is Script {
 
