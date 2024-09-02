@@ -26,7 +26,6 @@ import {ERC1155Bridgable} from './libs/ERC1155Bridgable.sol';
 contract InfernalRiftBelow is ERC1155Receiver, IInfernalPackage, IInfernalRiftBelow {
 
     error TemplateAlreadySet();
-    error NotRelayerCaller();
     error CrossChainSenderIsNotRiftAbove();
     error L1CollectionDoesNotExist();
 
@@ -134,13 +133,14 @@ contract InfernalRiftBelow is ERC1155Receiver, IInfernalPackage, IInfernalRiftBe
      * @param recipient The L2 recipient address
      */
     function thresholdCross(Package[] calldata packages, address recipient) external {
-        // Ensure call is coming from the cross chain messenger
-        if (msg.sender != RELAYER_ADDRESS) {
-            revert NotRelayerCaller();
-        }
+        // Calculate the expected aliased address of INFERNAL_RIFT_ABOVE
+        address expectedAliasedSender = address(
+            uint160(INFERNAL_RIFT_ABOVE) +
+                uint160(0x1111000000000000000000000000000000001111)
+        );
 
-        // Ensure original msg.sender is {InfernalRiftAbove}
-        if (ICrossDomainMessenger(msg.sender).xDomainMessageSender() != INFERNAL_RIFT_ABOVE) {
+        // Ensure the msg.sender is the aliased address of {InfernalRiftAbove}
+        if (msg.sender != expectedAliasedSender) {
             revert CrossChainSenderIsNotRiftAbove();
         }
 
