@@ -137,7 +137,7 @@ contract DeployAll is Script {
                 idsToCross: idsToCross,
                 amountsToCross: amountsToCross,
                 recipient: _RECIPIENT,
-                gasLimit: 45_000 wei
+                gasLimit: 1_000_000 wei
             })
         );
     }

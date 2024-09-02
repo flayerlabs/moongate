@@ -23,9 +23,9 @@ contract Bridge721 is Script {
     function run() external {
         vm.startBroadcast(vm.envUint("DEV_PRIVATE_KEY"));
 
-        address _INFERNAL_RIFT_ABOVE = 0x14a85AE3ED5FF92635c30003352A0305D301AF40; // Mainnet Sepolia
+        address _INFERNAL_RIFT_ABOVE = 0x329d63f8850fA73E9D74443f091A8E2458521245; // Mainnet Sepolia
 
-        address _RECIPIENT = 0x498E93Bc04955fCBAC04BCF1a3BA792f01Dbaa96;
+        address _RECIPIENT = 0xb06a64615842CbA9b3Bdb7e6F726F3a5BD20daC2;
 
         address[] memory collectionAddresses = new address[](1);
         collectionAddresses[0] = 0x3d7E741B5E806303ADbE0706c827d3AcF0696516;
@@ -56,7 +56,7 @@ contract Bridge721 is Script {
                 idsToCross: idsToCross,
                 amountsToCross: amountsToCross,
                 recipient: _RECIPIENT,
-                gasLimit: 45_000 wei
+                gasLimit: 2_000_000 wei
             })
         );
 
