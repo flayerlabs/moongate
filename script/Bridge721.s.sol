@@ -8,6 +8,12 @@ import {IERC721} from '@openzeppelin/token/ERC721/IERC721.sol';
 import {InfernalRiftAbove} from '../src/InfernalRiftAbove.sol';
 import {IInfernalRiftAbove} from '../src/interfaces/IInfernalRiftAbove.sol';
 
+interface MockERC721 {
+    function nextTokenId() external view returns (uint256);
+
+    function mint(uint256 count) external;
+}
+
 
 /**
  * Configures Above with information about Below.
@@ -26,18 +32,22 @@ contract Bridge721 is Script {
         address[] memory collectionAddresses = new address[](1);
         collectionAddresses[0] = 0x3d7E741B5E806303ADbE0706c827d3AcF0696516;
 
+        // mint 3 nfts
+        uint256 nextTokenId = MockERC721(collectionAddresses[0]).nextTokenId();
+        MockERC721(collectionAddresses[0]).mint(3);
+
         uint[][] memory idsToCross = new uint[][](1);
         idsToCross[0] = new uint[](3);
-        idsToCross[0][0] = 371;
-        idsToCross[0][1] = 372;
-        idsToCross[0][2] = 373;
+        idsToCross[0][0] = nextTokenId;
+        idsToCross[0][1] = nextTokenId + 1;
+        idsToCross[0][2] = nextTokenId + 2;
 
         uint[][] memory amountsToCross = new uint[][](1);
         amountsToCross[0] = new uint[](3);
 
         IERC721(collectionAddresses[0]).setApprovalForAll(_INFERNAL_RIFT_ABOVE, true);
 
-        InfernalRiftAbove(_INFERNAL_RIFT_ABOVE).crossTheThreshold{value: 0.01 ether}(
+        InfernalRiftAbove(_INFERNAL_RIFT_ABOVE).crossTheThreshold{value: 0 ether}(
         	IInfernalRiftAbove.ThresholdCrossParams({
         		collectionAddresses: collectionAddresses,
         		idsToCross: idsToCross,
