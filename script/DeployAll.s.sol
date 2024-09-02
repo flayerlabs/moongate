@@ -49,7 +49,7 @@ contract DeployAll is Script {
         _l1_configureAbove();
         _l1_bridge721();
 
-        vm.writeJson(deploymentObj, deploymentJsonPath);
+        _saveDeployment();
     }
 
     modifier onL1() {
@@ -76,13 +76,6 @@ contract DeployAll is Script {
             _L1_CROSS_DOMAIN_MESSENGER,
             _L1_ROYALTY_REGISTRY
         );
-
-        console.log("l1_riftAbove", address(l1_riftAbove));
-        vm.serializeAddress(
-            deploymentObj,
-            "l1_riftAbove",
-            address(l1_riftAbove)
-        );
     }
 
     function _l2_deployBelow() internal onL2 {
@@ -90,13 +83,6 @@ contract DeployAll is Script {
             _L2_RELAYER_ADDRESS,
             _L2_CROSS_DOMAIN_MESSENGER,
             address(l1_riftAbove)
-        );
-
-        console.log("l2_riftBelow", address(l2_riftBelow));
-        vm.serializeAddress(
-            deploymentObj,
-            "l2_riftBelow",
-            address(l2_riftBelow)
         );
 
         ERC1155Bridgable erc1155Bridgable = new ERC1155Bridgable(
@@ -154,5 +140,23 @@ contract DeployAll is Script {
                 gasLimit: 45_000 wei
             })
         );
+    }
+
+    function _saveDeployment() internal {
+        string memory finalJson = string(
+            abi.encodePacked(
+                "{",
+                '"l1_riftAbove": "',
+                vm.toString(address(l1_riftAbove)),
+                '", ',
+                '"l2_riftBelow": "',
+                vm.toString(address(l2_riftBelow)),
+                '"',
+                "}"
+            )
+        );
+
+        // Write the final JSON string to the file
+        vm.writeJson(finalJson, deploymentJsonPath);
     }
 }
