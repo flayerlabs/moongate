@@ -176,8 +176,8 @@ contract InfernalRiftAbove is ERC1155Receiver, IInfernalPackage, IInfernalRiftAb
                 amounts: params.amountsToCross[i],
                 uris: uris,
                 royaltyBps: _getCollectionRoyalty(collectionAddress, params.idsToCross[i][0]),
-                name: '',
-                symbol: ''
+                name: _getCollection1155Name(collectionAddress),
+                symbol: _getCollection1155Symbol(collectionAddress)
             });
         }
 
@@ -288,6 +288,28 @@ contract InfernalRiftAbove is ERC1155Receiver, IInfernalPackage, IInfernalRiftAb
             royaltyBps_ = uint96(_royaltyAmount);
         } catch {
             // It's okay if it reverts (:
+        }
+    }
+
+    /**
+     * Fetches the name of a 1155 collection, if it exists.
+     */
+    function _getCollection1155Name(address _collection) internal view returns (string memory) {
+        try IERC721Metadata(_collection).name() returns (string memory name) {
+            return name;
+        } catch {
+            return '';
+        }
+    }
+
+    /**
+     * Fetches the symbol of a 1155 collection, if it exists.
+     */
+    function _getCollection1155Symbol(address _collection) internal view returns (string memory) {
+        try IERC721Metadata(_collection).symbol() returns (string memory name) {
+            return name;
+        } catch {
+            return '';
         }
     }
 

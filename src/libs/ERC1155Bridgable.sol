@@ -30,6 +30,12 @@ contract ERC1155Bridgable is ERC1155, ERC2981 {
     /// The token address of the original ERC1155
     address public REMOTE_TOKEN;
 
+    /// The name of the token
+    string public name;
+
+    /// The symbol of the token
+    string public symbol;
+
     /// Maps tokenIds to their token URI
     mapping(uint _tokenId => string _tokenUri) public uriForToken;
 
@@ -50,7 +56,7 @@ contract ERC1155Bridgable is ERC1155, ERC2981 {
      *
      * @param _royaltyBps The denominated royalty amount
      */
-    function initialize(uint96 _royaltyBps, uint256 _REMOTE_CHAIN_ID, address _REMOTE_TOKEN) external {
+    function initialize(uint96 _royaltyBps, string memory _name, string memory _symbol, uint256 _REMOTE_CHAIN_ID, address _REMOTE_TOKEN) external {
         if (msg.sender != INFERNAL_RIFT_BELOW) {
             revert NotRiftBelow();
         }
@@ -62,6 +68,10 @@ contract ERC1155Bridgable is ERC1155, ERC2981 {
 
         // Set this contract to receive marketplace royalty
         _setDefaultRoyalty(address(this), _royaltyBps);
+
+        // Set name and symbol
+        name = _name;
+        symbol = _symbol;
 
         // Set our remote chain info
         REMOTE_CHAIN_ID = _REMOTE_CHAIN_ID;
