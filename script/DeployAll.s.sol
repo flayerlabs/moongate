@@ -7,6 +7,7 @@ import {ERC1155Bridgable} from "../src/libs/ERC1155Bridgable.sol";
 import {ERC721Bridgable} from "../src/libs/ERC721Bridgable.sol";
 
 import {IERC721} from "@openzeppelin/token/ERC721/IERC721.sol";
+import {IERC1155} from "@openzeppelin/token/ERC1155/IERC1155.sol";
 import {IInfernalRiftAbove} from "../src/interfaces/IInfernalRiftAbove.sol";
 
 import {Script} from "forge-std/Script.sol";
@@ -16,6 +17,12 @@ interface MockERC721 {
     function nextTokenId() external view returns (uint256);
 
     function mint(uint256 count) external;
+}
+
+interface Mock1155 {
+    function mint(uint256 amount) external returns (uint256 tokenId);
+
+    function mint(uint256 tokenId, uint256 amount) external;
 }
 
 contract DeployAll is Script {
@@ -44,12 +51,15 @@ contract DeployAll is Script {
         l1_forkId = vm.createFork(vm.rpcUrl("eth-sepolia"));
         l2_forkId = vm.createFork(vm.rpcUrl("base-sepolia"));
 
+        // deployments
         _l1_deployAbove();
         _l2_deployBelow();
         _l1_configureAbove();
-        _l1_bridge721();
-
         _saveDeployment();
+
+        // bridge
+        _l1_bridge721();
+        _l1_bridge1155();
     }
 
     modifier onL1() {
@@ -132,6 +142,45 @@ contract DeployAll is Script {
         }
 
         l1_riftAbove.crossTheThreshold{value: 0 ether}(
+            IInfernalRiftAbove.ThresholdCrossParams({
+                collectionAddresses: collectionAddresses,
+                idsToCross: idsToCross,
+                amountsToCross: amountsToCross,
+                recipient: _RECIPIENT,
+                gasLimit: 1_000_000 wei
+            })
+        );
+    }
+
+    function _l1_bridge1155() internal onL1 {
+        address[] memory collectionAddresses = new address[](1);
+        collectionAddresses[0] = 0x2369dff13b5F2778Fe90e5cdE5d40CCF7b72135e;
+
+        // mint 3 nfts
+        uint256 tokenId = 1;
+        Mock1155(collectionAddresses[0]).mint(tokenId, 3);
+
+        uint[][] memory idsToCross = new uint[][](1);
+        idsToCross[0] = new uint[](1);
+        idsToCross[0][0] = tokenId;
+
+        uint[][] memory amountsToCross = new uint[][](1);
+        amountsToCross[0] = new uint[](1);
+        amountsToCross[0][0] = 3;
+
+        if (
+            IERC1155(collectionAddresses[0]).isApprovedForAll(
+                address(l1_riftAbove),
+                address(this)
+            ) == false
+        ) {
+            IERC1155(collectionAddresses[0]).setApprovalForAll(
+                address(l1_riftAbove),
+                true
+            );
+        }
+
+        l1_riftAbove.crossTheThreshold1155{value: 0 ether}(
             IInfernalRiftAbove.ThresholdCrossParams({
                 collectionAddresses: collectionAddresses,
                 idsToCross: idsToCross,
